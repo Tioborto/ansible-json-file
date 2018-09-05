@@ -23,28 +23,28 @@ DOCUMENTATION = '''
         default: False
         env:
           - name: ANSIBLE_LOG_FILE_NAME
-        ini:
-          - key: log_file_name
-            section: defaults
         type: bool
 '''
 
 import datetime
 import json
+import os
 from functools import partial
 from ansible.inventory.host import Host
 from ansible.plugins.callback import CallbackBase
+from ansible.module_utils._text import to_native
 
 def current_time():
     return '%sZ' % datetime.datetime.utcnow().isoformat()
 
 class CallbackModule(CallbackBase):
-    CALLBACK_VERSION = 1.0
+    CALLBACK_VERSION = 2.0
     CALLBACK_TYPE = 'stdout'
     CALLBACK_NAME = 'json_file'
 
     def __init__(self, display=None):
         super(CallbackModule, self).__init__(display)
+        self.log_file_name = os.getenv('ANSIBLE_LOG_FILE_NAME', '')
         self.results = []
 
     def _new_play(self, play):
@@ -95,18 +95,17 @@ class CallbackModule(CallbackBase):
             s = stats.summarize(h)
             summary[h] = s
 
-        if self.get_option('log_file_name'):
-            log_file_name = self.get_option('log_file_name')
-
         output = {
             'plays': self.results,
             'stats': summary,
         }
 
-        output_file = open(log_file_name,"w")
-
-        output_file.write(json.dumps(output, indent=4, sort_keys=True))
-        output_file.close()
+        try:
+            output_file = open("{0}".format(self.log_file_name),"w+")
+            output_file.write(json.dumps(output, indent=4, sort_keys=True))
+            output_file.close()
+        except Exception as e:
+            AnsibleError('Something happened, this was original exception: %s' % to_native(e))
 
     def _record_task_result(self, on_info, result, **kwargs):
         """This function is used as a partial to add failed/skipped info in a single method"""
