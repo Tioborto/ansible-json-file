@@ -33,6 +33,7 @@ from functools import partial
 from ansible.inventory.host import Host
 from ansible.plugins.callback import CallbackBase
 from ansible.module_utils._text import to_native
+from ansible.errors import AnsibleParserError
 
 def current_time():
     return '%sZ' % datetime.datetime.utcnow().isoformat()
@@ -105,7 +106,7 @@ class CallbackModule(CallbackBase):
             output_file.write(json.dumps(output, indent=4, sort_keys=True))
             output_file.close()
         except Exception as e:
-            AnsibleError('Something happened, this was original exception: %s' % to_native(e))
+            AnsibleParserError('Something happened, this was original exception: %s' % to_native(e))
 
     def _record_task_result(self, on_info, result, **kwargs):
         """This function is used as a partial to add failed/skipped info in a single method"""
